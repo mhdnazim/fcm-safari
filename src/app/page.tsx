@@ -1,23 +1,25 @@
-'use client';
-import Image from "next/image";
-import styles from "./page.module.css";
-import { useEffect, useRef } from "react";
-import { requestPermission } from "./main"; // Make sure this is correctly importing your function
+'use client'
+import { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import Image from 'next/image';
+import styles from './page.module.css';
+import { requestPermission } from './main';
+
 
 export default function Home() {
-  const fetchToken = async () => {
-    try {
-      await requestPermission();
-    } catch (error) {
-      console.error("An error occurred while fetching the FCM token", error);
-    }
-  };
-
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        await requestPermission();
+      } catch (error) {
+        console.error('An error occurred while fetching the FCM token', error);
+      }
+    };
+
     const fetchWithDebounce = () => {
-      if (Notification.permission === "granted") {
+      if (Notification.permission === 'granted') {
         if (debounceTimer.current) {
           clearTimeout(debounceTimer.current);
         }
@@ -28,26 +30,35 @@ export default function Home() {
     // Initial permission check and setup
     fetchWithDebounce();
 
-    // Handle permission change
-    const handlePermissionChange = () => {
-      fetchWithDebounce();
-    };
-
-    // Query permission status and set up listener
-    navigator.permissions.query({ name: "notifications" }).then((permissionStatus) => {
-      permissionStatus.onchange = handlePermissionChange;
-    });
-
     // Cleanup function
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
-      navigator.permissions.query({ name: "notifications" }).then((permissionStatus) => {
-        permissionStatus.onchange = null;
-      });
     };
   }, []);
+
+
+  const permissionRequestedRef = useRef(false);
+
+    const requestNotificationPermission = async () => {
+        if (!permissionRequestedRef.current && Notification.permission === "default") {
+        permissionRequestedRef.current = true; // Prevents future requests
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+              console.log('Granted')
+            }
+        } catch (error) {
+            console.error("An error occurred while requesting notification permission:", error);
+        }
+        }
+    };
+      
+      useEffect(() => {
+          requestNotificationPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
   return (
     <main className={styles.main}>
