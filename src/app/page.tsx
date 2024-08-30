@@ -1,10 +1,59 @@
+'use client';
 import Image from "next/image";
 import styles from "./page.module.css";
+import { useEffect, useRef } from "react";
+import { requestPermission } from "./main"; // Make sure this is correctly importing your function
 
 export default function Home() {
+  const fetchToken = async () => {
+    try {
+      await requestPermission();
+    } catch (error) {
+      console.error("An error occurred while fetching the FCM token", error);
+    }
+  };
+
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const fetchWithDebounce = () => {
+      if (Notification.permission === "granted") {
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+        }
+        debounceTimer.current = setTimeout(fetchToken, 300);
+      }
+    };
+
+    // Initial permission check and setup
+    fetchWithDebounce();
+
+    // Handle permission change
+    const handlePermissionChange = () => {
+      fetchWithDebounce();
+    };
+
+    // Query permission status and set up listener
+    navigator.permissions.query({ name: "notifications" }).then((permissionStatus) => {
+      permissionStatus.onchange = handlePermissionChange;
+    });
+
+    // Cleanup function
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      navigator.permissions.query({ name: "notifications" }).then((permissionStatus) => {
+        permissionStatus.onchange = null;
+      });
+    };
+  }, []);
+
   return (
     <main className={styles.main}>
       <div className={styles.description}>
+        <div id="messages"></div>
+        <div id="token"></div>
         <p>
           Get started by editing&nbsp;
           <code className={styles.code}>src/app/page.tsx</code>
